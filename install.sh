@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# ============================================================================
+# Claude Code 통합 스킬/플러그인 설치기 (macOS / Linux / WSL)
+# Notion "Claude Code SKILLs" 7개 도구를 새 환경에서 한 번에 설치
+#   - npx skills 기반은 자동 설치
+#   - Claude Code 내부 /plugin 명령은 안내 출력 + 파일 저장
+# 실행: bash install.sh
+# ============================================================================
+set -u
+
+cyan(){ printf '\033[36m%s\033[0m\n' "$*"; }
+green(){ printf '\033[32m  [OK] %s\033[0m\n' "$*"; }
+yellow(){ printf '\033[33m  [! ] %s\033[0m\n' "$*"; }
+red(){ printf '\033[31m  [X ] %s\033[0m\n' "$*"; }
+have(){ command -v "$1" >/dev/null 2>&1; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ----------------------------------------------------------------------------
+cyan ""; cyan "=== 1. 사전 요구사항 점검 ==="
+if have node; then green "Node.js $(node --version)"; else
+  yellow "Node.js 미설치. https://nodejs.org 또는 nvm으로 설치하세요."
+fi
+if have git; then green "git $(git --version | sed 's/git version //')"; else
+  yellow "git 미설치. apt/brew 등으로 설치하세요."
+fi
+have claude && green "Claude Code CLI 감지됨" || yellow "Claude Code CLI 미감지 (/plugin 단계 전 필요)."
+if have tmux; then green "tmux $(tmux -V)"; else
+  yellow "tmux 미설치 (OMC 'team' 기능용). 'sudo apt install tmux' 또는 'brew install tmux'."
+fi
+
+# ----------------------------------------------------------------------------
+cyan ""; cyan "=== 2. npx skills 스킬 자동 설치 ==="
+if have node; then
+  run_skill(){ printf '  -> %s 설치 중...\n' "$1"; shift; if npx --yes "$@"; then green "완료"; else red "실패"; fi; }
+  run_skill "sf-skills (Salesforce)" skills add Jaganpro/sf-skills
+  run_skill "Skill Creator"          skills add https://github.com/anthropics/skills --skill skill-creator
+  run_skill "Find Skills"            skills add https://github.com/vercel-labs/skills --skill find-skills
+else
+  red "Node.js가 없어 npx 스킬 설치를 건너뜁니다."
+fi
+
+# ----------------------------------------------------------------------------
+cyan ""; cyan "=== 3. Claude Code 내부에서 실행할 /plugin 명령 ==="
+OUT="$SCRIPT_DIR/claude-plugin-commands.txt"
+cat > "$OUT" <<'EOF'
+# === Claude Code를 실행한 뒤 아래 명령을 순서대로 붙여넣으세요 ===
+
+# claude-hud (상태바 HUD) — Claude Code v1.0.80+
+/plugin marketplace add jarrodwatts/claude-hud
+/plugin install claude-hud
+/reload-plugins
+/claude-hud:setup
+
+# oh-my-claudecode (OMC)
+/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
+/plugin install oh-my-claudecode
+/setup
+
+# Superpowers
+/plugin install superpowers@claude-plugins-official
+
+# PPTX (document-skills 패키지에 포함)
+/plugin marketplace add anthropics/skills
+/plugin install document-skills@anthropic-agent-skills
+EOF
+cat "$OUT"
+green "위 명령을 '$OUT' 에도 저장했습니다."
+
+# 클립보드 복사 시도 (있으면)
+if have pbcopy; then pbcopy < "$OUT" && green "클립보드(pbcopy)에 복사됨";
+elif have xclip; then xclip -selection clipboard < "$OUT" && green "클립보드(xclip)에 복사됨";
+elif have clip.exe; then clip.exe < "$OUT" && green "클립보드(clip.exe)에 복사됨"; fi
+
+cyan ""; cyan "=== 완료 ==="
+echo "1) npx 스킬은 자동 설치됨."
+echo "2) Claude Code 실행 후 위 /plugin 명령을 붙여넣어 마무리하세요."
