@@ -2,8 +2,8 @@
 .SYNOPSIS
   Claude Code 통합 스킬/플러그인 설치기 (Windows / PowerShell)
 .DESCRIPTION
-  Notion "Claude Code SKILLs" 페이지에 정리된 7개 도구를 새 PC에서 한 번에 설치합니다.
-  - 셸에서 직접 설치 가능한 것(npx skills)은 자동 설치합니다.
+  Notion "Claude Code SKILLs" 페이지에 정리된 도구 + gstack 을 새 PC에서 한 번에 설치합니다.
+  - 셸에서 직접 설치 가능한 것(npx skills, gstack)은 자동 설치합니다.
   - Claude Code 내부에서만 가능한 /plugin 명령은 클립보드/파일로 안내합니다.
 .NOTES
   실행: 우클릭 > "PowerShell로 실행" 또는
@@ -15,14 +15,24 @@ param(
     [switch]$SkipPrereqCheck
 )
 
-$ErrorActionPreference = 'Stop'
+# native 명령(git/bun setup 등)이 stderr로 진행률을 뿜어도 죽지 않도록 Continue.
+# 성공/실패는 $LASTEXITCODE 로 직접 판정한다.
+$ErrorActionPreference = 'Continue'
 
 function Write-Section($t) { Write-Host "`n=== $t ===" -ForegroundColor Cyan }
 function Write-Ok($t)      { Write-Host "  [OK] $t"   -ForegroundColor Green }
 function Write-Warn($t)    { Write-Host "  [! ] $t"   -ForegroundColor Yellow }
 function Write-Err($t)     { Write-Host "  [X ] $t"   -ForegroundColor Red }
-
 function Test-Cmd($name) { return [bool](Get-Command $name -ErrorAction SilentlyContinue) }
+
+# npx 는 셈(shim)이라 PowerShell 배열 인자가 합쳐지는 버그가 있다.
+# 단일 문자열을 cmd /c 에 넘기면 안전하게 분리되고 exit code 도 정확하다.
+function Invoke-Npx($label, $argString) {
+    Write-Host "  -> $label 설치 중..." -ForegroundColor Gray
+    cmd /c "npx --yes $argString"
+    if ($LASTEXITCODE -eq 0) { Write-Ok "$label 완료" }
+    else { Write-Err "$label 실패 (exit $LASTEXITCODE)" }
+}
 
 # ----------------------------------------------------------------------------
 # 1) 사전 요구사항 점검
@@ -65,28 +75,73 @@ if (-not $SkipPrereqCheck) {
 Write-Section "2. npx skills 스킬 자동 설치"
 
 if (Test-Cmd node) {
-    $npxSkills = @(
-        @{ Name = 'sf-skills (Salesforce)'; Cmd = @('skills','add','Jaganpro/sf-skills') },
-        @{ Name = 'Skill Creator';          Cmd = @('skills','add','https://github.com/anthropics/skills','--skill','skill-creator') },
-        @{ Name = 'Find Skills';            Cmd = @('skills','add','https://github.com/vercel-labs/skills','--skill','find-skills') }
-    )
-    foreach ($s in $npxSkills) {
-        Write-Host "  -> $($s.Name) 설치 중..." -ForegroundColor Gray
-        try {
-            & npx --yes @($s.Cmd)
-            Write-Ok "$($s.Name) 완료"
-        } catch {
-            Write-Err "$($s.Name) 실패: $($_.Exception.Message)"
-        }
-    }
+    Invoke-Npx 'sf-skills (Salesforce)' 'skills add Jaganpro/sf-skills'
+    Invoke-Npx 'Skill Creator'          'skills add https://github.com/anthropics/skills --skill skill-creator'
+    Invoke-Npx 'Find Skills'            'skills add https://github.com/vercel-labs/skills --skill find-skills'
 } else {
     Write-Err "Node.js가 없어 npx 스킬 설치를 건너뜁니다."
 }
 
 # ----------------------------------------------------------------------------
-# 3) Claude Code /plugin 명령 안내 (대화형 - 수동 실행 필요)
+# 3) gstack 설치 (Bun 자동 설치 + git clone + ./setup)
 # ----------------------------------------------------------------------------
-Write-Section "3. Claude Code 내부에서 실행할 /plugin 명령"
+Write-Section "3. gstack 설치 (사업성 검토 등 ~50개 슬래시 커맨드)"
+
+# 3-1. Bun (gstack 의 browse 바이너리 빌드에 필요)
+if (Test-Cmd bun) { Write-Ok "Bun $(bun --version)" }
+else {
+    Write-Warn "Bun 미설치 -> npm 으로 설치"
+    if (Test-Cmd npm) {
+        cmd /c "npm install -g bun"
+        if ($LASTEXITCODE -eq 0) { Write-Ok "Bun 설치 완료" } else { Write-Err "Bun 설치 실패 (exit $LASTEXITCODE)" }
+    } else { Write-Err "npm 없음 -> Bun 설치 불가. https://bun.sh 에서 수동 설치." }
+}
+$npmBin = Join-Path $env:APPDATA 'npm'
+if ((Test-Path $npmBin) -and ($env:PATH -notlike "*$npmBin*")) { $env:PATH = "$env:PATH;$npmBin" }
+
+# 3-2. 클론 / 업데이트
+$gstackDir = Join-Path $HOME '.claude\skills\gstack'
+$gstackReady = $false
+if (Test-Cmd git) {
+    if (Test-Path (Join-Path $gstackDir '.git')) {
+        Write-Warn "gstack 이미 존재 -> git pull 로 업데이트"
+        git -C $gstackDir pull --ff-only --quiet
+        $gstackReady = ($LASTEXITCODE -eq 0)
+    } else {
+        git clone --single-branch --depth 1 --quiet https://github.com/garrytan/gstack.git $gstackDir
+        $gstackReady = ($LASTEXITCODE -eq 0)
+    }
+} else { Write-Err "git 없음 -> gstack 클론 불가." }
+
+# 3-3. setup 실행 (Git for Windows 의 bash 로 ./setup 구동)
+if ($gstackReady) {
+    $bashExe = $null
+    $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+    if ($gitCmd) {
+        $gitRoot = Split-Path (Split-Path $gitCmd.Source -Parent) -Parent
+        foreach ($rel in @('bin\bash.exe','usr\bin\bash.exe')) {
+            $cand = Join-Path $gitRoot $rel
+            if (Test-Path $cand) { $bashExe = $cand; break }
+        }
+    }
+    if (-not $bashExe -and (Test-Cmd bash)) { $bashExe = 'bash' }
+    if ($bashExe) {
+        Write-Host "  -> gstack setup 실행 중 (Playwright 다운로드로 수 분 소요될 수 있음)..." -ForegroundColor Gray
+        Push-Location $gstackDir
+        & $bashExe ./setup
+        $setupCode = $LASTEXITCODE
+        Pop-Location
+        if ($setupCode -eq 0) { Write-Ok "gstack 설치 완료 (/office-hours, /plan-ceo-review, /review, /qa, /ship 등)" }
+        else { Write-Err "gstack setup 실패 (exit $setupCode). 수동: cd `"$gstackDir`"; bash ./setup" }
+    } else {
+        Write-Err "bash 없음 -> gstack setup 수동 실행 필요: cd `"$gstackDir`"; bash ./setup"
+    }
+}
+
+# ----------------------------------------------------------------------------
+# 4) Claude Code /plugin 명령 안내 (대화형 - 수동 실행 필요)
+# ----------------------------------------------------------------------------
+Write-Section "4. Claude Code 내부에서 실행할 /plugin 명령"
 
 $pluginCmds = @"
 # === Claude Code를 실행한 뒤 아래 명령을 순서대로 붙여넣으세요 ===
@@ -122,5 +177,5 @@ try {
 } catch { Write-Warn "클립보드 복사 실패 (무시 가능)." }
 
 Write-Section "완료"
-Write-Host "1) 위 npx 스킬은 자동 설치되었습니다." -ForegroundColor Green
-Write-Host "2) Claude Code를 실행하고 클립보드/파일의 /plugin 명령을 붙여넣어 마무리하세요." -ForegroundColor Green
+Write-Host "1) 위 npx 스킬 + gstack은 자동 설치되었습니다." -ForegroundColor Green
+Write-Host "2) Claude Code를 '재시작'하고 클립보드/파일의 /plugin 명령을 붙여넣어 마무리하세요." -ForegroundColor Green

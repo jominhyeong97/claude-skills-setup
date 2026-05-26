@@ -41,7 +41,35 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-cyan ""; cyan "=== 3. Claude Code 내부에서 실행할 /plugin 명령 ==="
+cyan ""; cyan "=== 3. gstack 설치 (사업성 검토 등 ~50개 슬래시 커맨드) ==="
+# 3-1. Bun (gstack 의 browse 바이너리 빌드에 필요)
+if have bun; then green "Bun $(bun --version)"; else
+  yellow "Bun 미설치 -> 설치 시도"
+  if have npm; then npm install -g bun && green "Bun 설치 완료" || red "Bun 설치 실패"
+  elif have curl; then curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH" && green "Bun 설치 완료"
+  else red "Bun 설치 불가 (npm/curl 없음). https://bun.sh 수동 설치."; fi
+fi
+# 3-2. clone / 업데이트 후 setup
+GSTACK_DIR="$HOME/.claude/skills/gstack"
+if have git; then
+  if [ -d "$GSTACK_DIR/.git" ]; then
+    yellow "gstack 이미 존재 -> git pull 로 업데이트"
+    git -C "$GSTACK_DIR" pull --ff-only --quiet
+  else
+    git clone --single-branch --depth 1 --quiet https://github.com/garrytan/gstack.git "$GSTACK_DIR"
+  fi
+  if [ -f "$GSTACK_DIR/setup" ]; then
+    printf '  -> gstack setup 실행 중 (Playwright 다운로드로 수 분 소요될 수 있음)...\n'
+    if ( cd "$GSTACK_DIR" && bash ./setup ); then green "gstack 설치 완료 (/office-hours, /review, /qa, /ship 등)"; else red "gstack setup 실패. 수동: cd $GSTACK_DIR && bash ./setup"; fi
+  else
+    red "gstack setup 스크립트를 찾지 못했습니다: $GSTACK_DIR/setup"
+  fi
+else
+  red "git 없어 gstack 설치를 건너뜁니다."
+fi
+
+# ----------------------------------------------------------------------------
+cyan ""; cyan "=== 4. Claude Code 내부에서 실행할 /plugin 명령 ==="
 OUT="$SCRIPT_DIR/claude-plugin-commands.txt"
 cat > "$OUT" <<'EOF'
 # === Claude Code를 실행한 뒤 아래 명령을 순서대로 붙여넣으세요 ===
@@ -73,5 +101,6 @@ elif have xclip; then xclip -selection clipboard < "$OUT" && green "클립보드
 elif have clip.exe; then clip.exe < "$OUT" && green "클립보드(clip.exe)에 복사됨"; fi
 
 cyan ""; cyan "=== 완료 ==="
-echo "1) npx 스킬은 자동 설치됨."
-echo "2) Claude Code 실행 후 위 /plugin 명령을 붙여넣어 마무리하세요."
+echo "1) npx 스킬 + gstack 은 자동 설치됨."
+echo "2) Claude Code 를 '재시작'한 뒤 위 /plugin 명령을 붙여넣어 마무리하세요."
+echo "   (새로 설치된 스킬/플러그인은 Claude Code 를 다시 켜야 목록에 나타납니다.)"
