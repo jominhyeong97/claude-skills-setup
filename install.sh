@@ -36,6 +36,7 @@ if have node; then
   run_skill "sf-skills (Salesforce)" skills add Jaganpro/sf-skills
   run_skill "Skill Creator"          skills add https://github.com/anthropics/skills --skill skill-creator
   run_skill "Find Skills"            skills add https://github.com/vercel-labs/skills --skill find-skills
+  run_skill "AgentMemory (8 skills)" skills add rohitg00/agentmemory
 else
   red "Node.js가 없어 npx 스킬 설치를 건너뜁니다."
 fi
@@ -69,7 +70,19 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-cyan ""; cyan "=== 4. Claude Code 내부에서 실행할 /plugin 명령 ==="
+cyan ""; cyan "=== 4. agentmemory 전역 설치 (영속 메모리) ==="
+if have npm; then
+  if have agentmemory; then green "agentmemory $(agentmemory --version) 이미 설치됨"; else
+    printf '  -> @agentmemory/agentmemory 전역 설치 중...\n'
+    if npm install -g @agentmemory/agentmemory; then green "agentmemory 설치 완료"; else red "agentmemory 설치 실패"; fi
+  fi
+  yellow "MCP 연결은 Claude Code에서 한 번만 실행하세요: agentmemory connect claude-code"
+else
+  red "npm 없어 agentmemory 설치를 건너뜁니다."
+fi
+
+# ----------------------------------------------------------------------------
+cyan ""; cyan "=== 5. Claude Code 내부에서 실행할 /plugin 명령 ==="
 OUT="$SCRIPT_DIR/claude-plugin-commands.txt"
 cat > "$OUT" <<'EOF'
 # === Claude Code를 실행한 뒤 아래 명령을 순서대로 붙여넣으세요 ===
@@ -91,6 +104,18 @@ cat > "$OUT" <<'EOF'
 # PPTX (document-skills 패키지에 포함)
 /plugin marketplace add anthropics/skills
 /plugin install document-skills@anthropic-agent-skills
+
+# Karpathy Guidelines (LLM 코딩 실수 방지 4룰)
+/plugin marketplace add multica-ai/andrej-karpathy-skills
+/plugin install andrej-karpathy-skills
+
+# Understand-Anything (코드베이스 지식 그래프)
+/plugin marketplace add Lum1104/Understand-Anything
+/plugin install understand-anything
+
+# claude-video (영상 시청 능력 — /watch <URL>)
+/plugin marketplace add bradautomates/claude-video
+/plugin install watch
 EOF
 cat "$OUT"
 green "위 명령을 '$OUT' 에도 저장했습니다."
@@ -101,6 +126,7 @@ elif have xclip; then xclip -selection clipboard < "$OUT" && green "클립보드
 elif have clip.exe; then clip.exe < "$OUT" && green "클립보드(clip.exe)에 복사됨"; fi
 
 cyan ""; cyan "=== 완료 ==="
-echo "1) npx 스킬 + gstack 은 자동 설치됨."
+echo "1) npx 스킬 + gstack + agentmemory 는 자동 설치됨."
 echo "2) Claude Code 를 '재시작'한 뒤 위 /plugin 명령을 붙여넣어 마무리하세요."
 echo "   (새로 설치된 스킬/플러그인은 Claude Code 를 다시 켜야 목록에 나타납니다.)"
+echo "3) 메모리 영속화: Claude Code 안에서 'agentmemory connect claude-code' 1회 실행."

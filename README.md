@@ -1,6 +1,6 @@
 # Claude Code 스킬 통합 설치 (My Skills Setup)
 
-Notion "👨‍💻 Claude Code SKILLs" 페이지의 **7개 도구 + gstack**을 새 PC에서 한 번에 설치하기 위한 패키지입니다.
+Notion "👨‍💻 Claude Code SKILLs" 페이지의 **11개 도구 + gstack + agentmemory**를 새 PC에서 한 번에 설치하기 위한 패키지입니다.
 
 ## 빠른 시작
 
@@ -20,9 +20,10 @@ bash install.sh
 
 | 설치 방식 | 셸에서 자동? | 대상 |
 |---|---|---|
-| `npx skills add ...` | ✅ 자동 | sf-skills, Skill Creator, Find Skills |
+| `npx skills add ...` | ✅ 자동 | sf-skills, Skill Creator, Find Skills, **AgentMemory(8 skills)** |
 | `git clone` + `./setup` | ✅ 자동 (Bun 자동 설치) | gstack |
-| Claude Code `/plugin ...` 슬래시 명령 | ⚠️ 수동 (대화형) | claude-hud, OMC, Superpowers, PPTX |
+| `npm install -g` | ✅ 자동 | **agentmemory MCP 서버** |
+| Claude Code `/plugin ...` 슬래시 명령 | ⚠️ 수동 (대화형) | claude-hud, OMC, Superpowers, PPTX, **Karpathy Guidelines, Understand-Anything, claude-video** |
 
 Claude Code 슬래시 명령은 **Claude Code를 실행한 상태에서** 입력해야 하므로 일반 셸 스크립트로 자동화할 수 없습니다.
 그래서 스크립트는 (1) npx 스킬을 자동 설치하고, (2) 나머지 `/plugin` 명령을 **클립보드에 복사 + `claude-plugin-commands.txt` 파일로 저장**해 줍니다. Claude Code를 켜고 붙여넣기만 하면 됩니다.
@@ -39,6 +40,10 @@ Claude Code 슬래시 명령은 **Claude Code를 실행한 상태에서** 입력
 | 6 | Skill Creator | `npx skills add anthropics/skills --skill skill-creator` | |
 | 7 | Find Skills | `npx skills add vercel-labs/skills --skill find-skills` | |
 | 8 | gstack | `git clone … ~/.claude/skills/gstack && ./setup` | Bun 필요(스크립트가 자동 설치), ~50개 슬래시 커맨드 |
+| 9 | Karpathy Guidelines | `/plugin install andrej-karpathy-skills` (`marketplace add multica-ai/andrej-karpathy-skills`) | LLM 코딩 실수 방지 4룰 (CLAUDE.md) |
+| 10 | Understand-Anything | `/plugin install understand-anything` (`marketplace add Lum1104/Understand-Anything`) | `/understand` 로 코드베이스 지식 그래프 생성 |
+| 11 | claude-video | `/plugin install watch` (`marketplace add bradautomates/claude-video`) | `/watch <URL>` 영상 시청, Whisper용 Groq/OpenAI 키 필요 |
+| 12 | agentmemory | `npm install -g @agentmemory/agentmemory` + `agentmemory connect claude-code` | 영속 메모리 MCP 서버 + 8개 네이티브 스킬 |
 
 ## 사전 요구사항
 - **Node.js LTS** (npx 스킬 설치에 필수) — 스크립트가 winget으로 자동 설치 시도
@@ -53,10 +58,15 @@ Claude Code 슬래시 명령은 **Claude Code를 실행한 상태에서** 입력
 npx skills add Jaganpro/sf-skills
 npx skills add https://github.com/anthropics/skills --skill skill-creator
 npx skills add https://github.com/vercel-labs/skills --skill find-skills
+npx skills add rohitg00/agentmemory       # agentmemory 8 native skills
 
 # gstack (Bun 필요: npm i -g bun)
 git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
 cd ~/.claude/skills/gstack && ./setup
+
+# agentmemory MCP 서버 (영속 메모리)
+npm install -g @agentmemory/agentmemory
+# Claude Code 안에서 1회:  agentmemory connect claude-code
 ```
 
 ## 참고

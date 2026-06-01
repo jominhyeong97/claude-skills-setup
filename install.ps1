@@ -78,6 +78,7 @@ if (Test-Cmd node) {
     Invoke-Npx 'sf-skills (Salesforce)' 'skills add Jaganpro/sf-skills'
     Invoke-Npx 'Skill Creator'          'skills add https://github.com/anthropics/skills --skill skill-creator'
     Invoke-Npx 'Find Skills'            'skills add https://github.com/vercel-labs/skills --skill find-skills'
+    Invoke-Npx 'AgentMemory (8 skills)' 'skills add rohitg00/agentmemory'
 } else {
     Write-Err "Node.js가 없어 npx 스킬 설치를 건너뜁니다."
 }
@@ -139,9 +140,24 @@ if ($gstackReady) {
 }
 
 # ----------------------------------------------------------------------------
-# 4) Claude Code /plugin 명령 안내 (대화형 - 수동 실행 필요)
+# 4) agentmemory 전역 설치 (영속 메모리 백엔드)
 # ----------------------------------------------------------------------------
-Write-Section "4. Claude Code 내부에서 실행할 /plugin 명령"
+Write-Section "4. agentmemory 전역 설치 (영속 메모리)"
+if (Test-Cmd npm) {
+    if (Test-Cmd agentmemory) { Write-Ok "agentmemory $(agentmemory --version) 이미 설치됨" }
+    else {
+        Write-Host "  -> @agentmemory/agentmemory 전역 설치 중..." -ForegroundColor Gray
+        cmd /c "npm install -g @agentmemory/agentmemory"
+        if ($LASTEXITCODE -eq 0) { Write-Ok "agentmemory 설치 완료" }
+        else { Write-Err "agentmemory 설치 실패 (exit $LASTEXITCODE)" }
+    }
+    Write-Warn "MCP 연결은 Claude Code에서 한 번만 실행하세요: agentmemory connect claude-code"
+} else { Write-Err "npm 없음 -> agentmemory 설치 불가." }
+
+# ----------------------------------------------------------------------------
+# 5) Claude Code /plugin 명령 안내 (대화형 - 수동 실행 필요)
+# ----------------------------------------------------------------------------
+Write-Section "5. Claude Code 내부에서 실행할 /plugin 명령"
 
 $pluginCmds = @"
 # === Claude Code를 실행한 뒤 아래 명령을 순서대로 붙여넣으세요 ===
@@ -163,6 +179,18 @@ $pluginCmds = @"
 # PPTX (document-skills 패키지에 포함)
 /plugin marketplace add anthropics/skills
 /plugin install document-skills@anthropic-agent-skills
+
+# Karpathy Guidelines (LLM 코딩 실수 방지 4룰)
+/plugin marketplace add multica-ai/andrej-karpathy-skills
+/plugin install andrej-karpathy-skills
+
+# Understand-Anything (코드베이스 지식 그래프)
+/plugin marketplace add Lum1104/Understand-Anything
+/plugin install understand-anything
+
+# claude-video (영상 시청 능력 — /watch <URL>)
+/plugin marketplace add bradautomates/claude-video
+/plugin install watch
 "@
 
 $outFile = Join-Path $PSScriptRoot 'claude-plugin-commands.txt'
@@ -177,5 +205,6 @@ try {
 } catch { Write-Warn "클립보드 복사 실패 (무시 가능)." }
 
 Write-Section "완료"
-Write-Host "1) 위 npx 스킬 + gstack은 자동 설치되었습니다." -ForegroundColor Green
+Write-Host "1) 위 npx 스킬 + gstack + agentmemory는 자동 설치되었습니다." -ForegroundColor Green
 Write-Host "2) Claude Code를 '재시작'하고 클립보드/파일의 /plugin 명령을 붙여넣어 마무리하세요." -ForegroundColor Green
+Write-Host "3) 메모리 영속화: Claude Code 안에서 'agentmemory connect claude-code' 1회 실행." -ForegroundColor Green
