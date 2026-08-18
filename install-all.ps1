@@ -1,10 +1,15 @@
-﻿<#
+<#
   Claude Code 통합 스킬/플러그인 설치기 (단일 파일 / Windows)
   Notion "Claude Code SKILLs" 도구 + gstack 전체를 명령 한 줄로 설치.
 
   실행 방법 (둘 중 하나):
     1) 인터넷 한 줄:  irm https://raw.githubusercontent.com/jominhyeong97/claude-skills-setup/main/install-all.ps1 | iex
-    2) 파일 실행:     powershell -ExecutionPolicy Bypass -File .\install-all.ps1
+    2) 로컬 파일:     powershell -ExecutionPolicy Bypass -Command "iex ([IO.File]::ReadAllText('.\install-all.ps1',[Text.Encoding]::UTF8))"
+
+  주의: 이 파일은 BOM 없는 UTF-8 이어야 한다.
+    - BOM 을 붙이면 irm 이 U+FEFF 를 문자열에 남겨 iex 파싱이 깨진다(주 경로 파손).
+    - BOM 이 없으면 PowerShell 5.1 의 `-File` 은 ANSI 로 읽어 한글이 깨진다.
+    따라서 로컬 실행은 위 2)처럼 UTF-8 로 명시 디코딩해서 iex 에 넘긴다.
 
   동작:
     - 사전요구(Node/git/claude CLI) 점검 및 winget 자동 설치 시도
@@ -18,7 +23,7 @@
   변경 이력:
     2026-08-18  Bun 설치를 npm -g 에서 공식 설치기로 교체(실패 원인 제거),
                 /plugin 수동 붙여넣기를 claude CLI 자동 설치로 전환,
-                최종 결과 요약 추가.
+                최종 결과 요약 추가, 로컬 실행법을 UTF-8 명시 디코딩으로 변경.
 #>
 
 # native 명령(git/bun setup 등)이 stderr로 진행률을 뿜어도 죽지 않도록 Continue.
