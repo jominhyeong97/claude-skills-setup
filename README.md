@@ -74,6 +74,19 @@ bash install.sh
 | 10 | Understand-Anything | `/plugin install understand-anything` (`marketplace add Lum1104/Understand-Anything`) | `/understand` 로 코드베이스 지식 그래프 생성 |
 | 11 | claude-video | `/plugin install watch` (`marketplace add bradautomates/claude-video`) | `/watch <URL>` 영상 시청, Whisper용 Groq/OpenAI 키 필요 |
 | 12 | agentmemory | `npm install -g @agentmemory/agentmemory` + `agentmemory connect claude-code` | 영속 메모리 MCP 서버 + 8개 네이티브 스킬 |
+| 13 | **notion-docs** (직접 만든 스킬) | `skills/notion-docs/SKILL.md` → `~/.claude/skills/` 로 자동 복사 | Notion 문서 규칙(계층·강조·계기 각주) + **Notion MCP 편집 함정** |
+
+### 🧩 직접 만든 스킬 — `skills/`
+
+남이 만든 스킬만 모으는 저장소가 아니다. **내 규칙을 담은 스킬**을 여기 두고 같이 배포한다.
+
+| 스킬 | 무엇 |
+|---|---|
+| `notion-docs` | Notion 페이지를 만들거나 고칠 때의 규칙. 문서 계층(L1 지도 / L3 문서)·강조 상한·「계기」 각주, 그리고 **Notion MCP 로 편집할 때 실제로 겪은 실패**(`update_content` 완전 일치 요구 · 묶음 편집이 일부만 반영 · 한글 자모 깨짐)를 막는 절차 |
+
+**새 스킬을 추가하려면**: `skills/<이름>/SKILL.md` 를 만들고, `install-all.ps1` 의
+`$PersonalSkills` 배열과 `install.sh` 의 `for sk in ...` 목록에 이름을 넣는다. 끝이다 —
+다른 PC 는 한 줄 설치로 자동으로 받는다.
 
 ## 사전 요구사항
 - **Node.js LTS** (npx 스킬 설치에 필수) — 스크립트가 winget으로 자동 설치 시도

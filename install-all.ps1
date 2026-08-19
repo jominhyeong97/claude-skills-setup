@@ -223,10 +223,34 @@ if (Test-Cmd claude) {
     try { $pluginCmds | Set-Clipboard; Write-Ok "클립보드에도 복사됨." } catch { Write-Warn "클립보드 복사 실패(무시 가능)." }
 }
 
-# --- 7. 결과 요약 -----------------------------------------------------------
+# --- 7. 개인 스킬 설치 (이 저장소의 skills/ 를 ~/.claude/skills 로) ----------
+# 남이 만든 스킬이 아니라 «내 규칙» 을 담은 스킬이다. irm | iex 로 실행할 때는
+# 로컬 파일이 없으므로 raw.githubusercontent.com 에서 직접 받는다.
+Write-Section "7. 개인 스킬 설치"
+$RawBase = 'https://raw.githubusercontent.com/jominhyeong97/claude-skills-setup/main/skills'
+$PersonalSkills = @(
+    @{ name = 'notion-docs'; files = @('SKILL.md'); note = 'Notion 문서 규칙 + MCP 편집 함정' }
+)
+$skillRoot = Join-Path $HOME '.claude\skills'
+foreach ($sk in $PersonalSkills) {
+    $dir = Join-Path $skillRoot $sk.name
+    try {
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        foreach ($f in $sk.files) {
+            Invoke-WebRequest -Uri "$RawBase/$($sk.name)/$f" -OutFile (Join-Path $dir $f) -UseBasicParsing -ErrorAction Stop
+        }
+        Write-Ok "$($sk.name) 설치 완료 -- $($sk.note)"
+        Add-Result "skill:$($sk.name)" $true $sk.note
+    } catch {
+        Write-Err "$($sk.name) 설치 실패: $($_.Exception.Message)"
+        Add-Result "skill:$($sk.name)" $false $_.Exception.Message
+    }
+}
+
+# --- 8. 결과 요약 -----------------------------------------------------------
 # 예전 버전은 실패해도 계속 진행만 하고 요약이 없어서, gstack 이 빠진 것을
 # 몇 달 동안 모르고 지나갔다. 아래 표가 그 재발을 막는다.
-Write-Section "7. 설치 결과 요약"
+Write-Section "8. 설치 결과 요약"
 $script:Results | Format-Table -AutoSize | Out-String | Write-Host
 
 $failed = @($script:Results | Where-Object { $_.결과 -eq 'FAIL' })

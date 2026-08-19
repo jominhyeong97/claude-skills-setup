@@ -125,6 +125,20 @@ if have pbcopy; then pbcopy < "$OUT" && green "클립보드(pbcopy)에 복사됨
 elif have xclip; then xclip -selection clipboard < "$OUT" && green "클립보드(xclip)에 복사됨";
 elif have clip.exe; then clip.exe < "$OUT" && green "클립보드(clip.exe)에 복사됨"; fi
 
+# --- 개인 스킬 설치 (이 저장소의 skills/ 를 ~/.claude/skills 로) -------------
+# 남이 만든 스킬이 아니라 «내 규칙» 을 담은 스킬이다. curl | bash 로 실행할 때는
+# 로컬 파일이 없으므로 raw.githubusercontent.com 에서 직접 받는다.
+cyan ""; cyan "=== 개인 스킬 설치 ==="
+RAW_BASE="https://raw.githubusercontent.com/jominhyeong97/claude-skills-setup/main/skills"
+for sk in notion-docs; do
+  mkdir -p "$HOME/.claude/skills/$sk"
+  if curl -fsSL "$RAW_BASE/$sk/SKILL.md" -o "$HOME/.claude/skills/$sk/SKILL.md"; then
+    green "$sk 설치 완료"
+  else
+    echo "  [X] $sk 설치 실패 — $RAW_BASE/$sk/SKILL.md 를 확인하세요"
+  fi
+done
+
 cyan ""; cyan "=== 완료 ==="
 echo "1) npx 스킬 + gstack + agentmemory 는 자동 설치됨."
 echo "2) Claude Code 를 '재시작'한 뒤 위 /plugin 명령을 붙여넣어 마무리하세요."
