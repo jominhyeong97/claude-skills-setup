@@ -13,7 +13,7 @@
 
   동작:
     - 사전요구(Node/git/claude CLI) 점검 및 winget 자동 설치 시도
-    - npx skills 4종 자동 설치 (sf-skills, Skill Creator, Find Skills, AgentMemory)
+    - npx skills 5종 자동 설치 (sf-skills, Skill Creator, Find Skills, AgentMemory, Unlazy)
     - Bun 공식 설치기로 설치 (~/.bun, Node 버전과 무관 / nvm 사용 시에도 안전)
     - gstack 자동 설치 (git clone + ./setup, ~55개 슬래시 커맨드)
     - agentmemory MCP 서버 전역 설치 (npm i -g, 영속 메모리 백엔드)
@@ -24,6 +24,7 @@
     2026-08-18  Bun 설치를 npm -g 에서 공식 설치기로 교체(실패 원인 제거),
                 /plugin 수동 붙여넣기를 claude CLI 자동 설치로 전환,
                 최종 결과 요약 추가, 로컬 실행법을 UTF-8 명시 디코딩으로 변경.
+    2026-08-24  Unlazy(Leonxlnx/unlazy) 추가 - 에이전트 게으름 차단 게이트 검증 스킬.
 #>
 
 # native 명령(git/bun setup 등)이 stderr로 진행률을 뿜어도 죽지 않도록 Continue.
@@ -89,7 +90,8 @@ if (Test-Cmd node) {
     Invoke-Npx 'Skill Creator'          'skills add https://github.com/anthropics/skills --skill skill-creator'
     Invoke-Npx 'Find Skills'            'skills add https://github.com/vercel-labs/skills --skill find-skills'
     Invoke-Npx 'AgentMemory (8 skills)' 'skills add rohitg00/agentmemory'
-} else { Write-Err "Node.js 없음 -> npx 스킬 건너뜀."; Add-Result 'npx skills 4종' $false 'Node.js 없음' }
+    Invoke-Npx 'Unlazy (게이트 검증)'   'skills add Leonxlnx/unlazy'
+} else { Write-Err "Node.js 없음 -> npx 스킬 건너뜀."; Add-Result 'npx skills 5종' $false 'Node.js 없음' }
 
 # --- 3. Bun 설치 ------------------------------------------------------------
 # 주의: 예전 버전은 'npm install -g bun' 을 썼는데, nvm 사용 시 Node 버전을 바꾸면
